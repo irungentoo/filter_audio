@@ -17,6 +17,8 @@ typedef struct {
     int32_t tmp_mem[496];
 
     int16_t msInSndCardBuf;
+
+    FilterState hpf;
 } Filter_Audio;
 
 #define _FILTER_AUDIO
@@ -51,6 +53,8 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     if (fs == 48000) {
         fs = 16000;
     }
+
+    init_highpass_filter(&f_a->hpf, fs);
 
     if (WebRtcAgc_Create(&f_a->gain_control) == -1) {
         free(f_a);
@@ -188,6 +192,8 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
         } else {
             memcpy(d, data + (samples - temp_samples), sizeof(d));
         }
+
+        highpass_filter(&f_a->hpf, d, nsx_samples);
 
         float d_f[nsx_samples];
         S16ToFloatS16(d, nsx_samples, d_f);
