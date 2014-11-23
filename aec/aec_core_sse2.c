@@ -12,6 +12,8 @@
  * The core AEC algorithm, SSE2 version of speed-critical functions.
  */
 
+#ifdef __SSE2__
+
 #include <emmintrin.h>
 #include <math.h>
 #include <string.h>  // memset
@@ -729,3 +731,5 @@ void WebRtcAec_InitAec_SSE2(void) {
   WebRtcAec_OverdriveAndSuppress = OverdriveAndSuppressSSE2;
   WebRtcAec_SubbandCoherence = SubbandCoherenceSSE2;
 }
+
+#endif
