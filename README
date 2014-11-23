@@ -1,0 +1,6 @@
+Lightweight audio filtering library made from webrtc code.
+
+To build: gcc -o <your_binary> <your c files> filter_audio.c agc/*.c ns/*.c other/*.c -lpthread -lm
+
+
+My code is licenced under the same BSD 3-clause license as the code I took from: https://code.google.com/p/webrtc/
