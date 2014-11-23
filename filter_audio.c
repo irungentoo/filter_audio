@@ -21,6 +21,10 @@ typedef struct {
 
 void kill_filter_audio(Filter_Audio *f_a)
 {
+    if (!f_a) {
+        return;
+    }
+
     WebRtcNsx_Free(f_a->noise_sup_x);
     WebRtcAgc_Free(f_a->gain_control);
     free(f_a);
@@ -88,6 +92,10 @@ static void upsample_audio(Filter_Audio *f_a, int16_t *out, int16_t *in)
 
 int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 {
+    if (!f_a) {
+        return -1;
+    }
+
     unsigned int nsx_samples = f_a->fs / 100;
     if (!samples || (samples % nsx_samples) != 0) {
         return -1;
