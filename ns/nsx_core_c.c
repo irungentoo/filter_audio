@@ -129,7 +129,7 @@ void WebRtcNsx_SpeechNoiseProb(NsxInst_t* inst,
     // indicator1 = 0.5 * (tanh(sgnMap * widthPrior *
     //                          (threshPrior1 - tmpFloat1)) + 1.0);
     tableIndex = (int16_t)(tmpU32no1 >> 14);
-    if (tableIndex < 16) {
+    if (tableIndex < 16 && (tableIndex >= 0)) {
       tmp16no2 = kIndicatorTable[tableIndex];
       tmp16no1 = kIndicatorTable[tableIndex + 1] - kIndicatorTable[tableIndex];
       frac = (int16_t)(tmpU32no1 & 0x00003fff); // Q14
@@ -176,7 +176,7 @@ void WebRtcNsx_SpeechNoiseProb(NsxInst_t* inst,
      indicator2 = 0.5 * (tanh(widthPrior * (tmpFloat1 - threshPrior2)) + 1.0);
      */
     tableIndex = (int16_t)(tmpU32no1 >> 14);
-    if (tableIndex < 16) {
+    if (tableIndex < 16 && (tableIndex >= 0)) {
       tmp16no2 = kIndicatorTable[tableIndex];
       tmp16no1 = kIndicatorTable[tableIndex + 1] - kIndicatorTable[tableIndex];
       frac = (int16_t)(tmpU32no1 & 0x00003fff); // Q14
