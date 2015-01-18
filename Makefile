@@ -1,4 +1,4 @@
-PREFIX = /usr/local
+PREFIX ?= /usr/local
 LDLIBS = -lm -lpthread
 
 TARGET = libfilteraudio.so
@@ -16,8 +16,10 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
 install: all $(HEADER)
-	install -Dm755 $(TARGET) $(DESTDIR)/$(PREFIX)/lib/$(TARGET)
-	install -Dm644 $(HEADER) $(DESTDIR)/$(PREFIX)/include/$(HEADER)
+	mkdir -p $(DESTDIR)/$(PREFIX)/lib
+	mkdir -p $(DESTDIR)/$(PREFIX)/include
+	install -m755 $(TARGET) $(DESTDIR)/$(PREFIX)/lib/$(TARGET)
+	install -m644 $(HEADER) $(DESTDIR)/$(PREFIX)/include/$(HEADER)
 
 clean:
 	rm -f $(TARGET) $(OBJ)
