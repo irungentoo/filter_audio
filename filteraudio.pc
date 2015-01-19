@@ -1,0 +1,8 @@
+prefix=__PREFIX__
+libdir=__LIBDIR__
+includedir=${prefix}/include
+
+Name: filteraudio
+Descrpition: Lightweight audio filtering library made from webrtc code
+Libs: -L${libdir} -lfilteraudio
+Cflags: -I${includedir}
