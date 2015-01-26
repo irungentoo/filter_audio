@@ -4,6 +4,6 @@ includedir=${prefix}/include
 
 Name: filteraudio
 Description: Lightweight audio filtering library made from webrtc code
-Version: 0
+Version: __VERSION__
 Libs: -L${libdir} -lfilteraudio
 Cflags: -I${includedir}
