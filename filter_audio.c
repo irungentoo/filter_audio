@@ -12,7 +12,7 @@ typedef struct {
     void *gain_control, *echo_cancellation;
     uint32_t fs;
 
-    WebRtcSpl_State48khzTo16khz state_in;
+    WebRtcSpl_State48khzTo16khz state_in, state_in_echo;
     WebRtcSpl_State16khzTo48khz state_out;
     int32_t tmp_mem[496];
 
@@ -128,6 +128,11 @@ int enable_disable_filters(Filter_Audio *f_a, int echo, int noise, int gain)
     return 0;
 }
 
+static void downsample_audio_echo_in(Filter_Audio *f_a, int16_t *out, const int16_t *in)
+{
+    WebRtcSpl_Resample48khzTo16khz(in, out, &f_a->state_in_echo, f_a->tmp_mem);
+}
+
 static void downsample_audio(Filter_Audio *f_a, int16_t *out, const int16_t *in)
 {
     WebRtcSpl_Resample48khzTo16khz(in, out, &f_a->state_in, f_a->tmp_mem);
@@ -165,7 +170,7 @@ int pass_audio_output(Filter_Audio *f_a, const int16_t *data, unsigned int sampl
 
         if (resample) {
             int16_t d[nsx_samples];
-            downsample_audio(f_a, d, data + resampled_samples);
+            downsample_audio_echo_in(f_a, d, data + resampled_samples);
             S16ToFloatS16(d, nsx_samples, d_f);
             resampled_samples += 480;
         } else {
