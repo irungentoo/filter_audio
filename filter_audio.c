@@ -22,6 +22,10 @@ typedef struct {
 
     int32_t downs_2_state[8];
     int32_t ups_2_state[8];
+
+    int echo_enabled;
+    int gain_enabled;
+    int noise_enabled;
 } Filter_Audio;
 
 #define _FILTER_AUDIO
@@ -106,7 +110,22 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         return NULL;
     }
 
+    f_a->echo_enabled = 1;
+    f_a->gain_enabled = 1;
+    f_a->noise_enabled = 1;
     return f_a;
+}
+
+int enable_disable_filters(Filter_Audio *f_a, int echo, int noise, int gain)
+{
+    if (!f_a) {
+        return -1;
+    }
+
+    f_a->echo_enabled = echo;
+    f_a->gain_enabled = gain;
+    f_a->noise_enabled = noise;
+    return 0;
 }
 
 static void downsample_audio(Filter_Audio *f_a, int16_t *out, const int16_t *in)
@@ -122,7 +141,7 @@ static void upsample_audio(Filter_Audio *f_a, int16_t *out, const int16_t *in)
 
 int pass_audio_output(Filter_Audio *f_a, const int16_t *data, unsigned int samples)
 {
-    if (!f_a) {
+    if (!f_a || !f_a->echo_enabled) {
         return -1;
     }
 
@@ -205,22 +224,28 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
         highpass_filter(&f_a->hpf, d, nsx_samples);
 
-        float d_f[nsx_samples];
-        S16ToFloatS16(d, nsx_samples, d_f);
-        if (WebRtcAec_Process(f_a->echo_cancellation, d_f, 0, d_f, 0, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
-            return -1;
-        }
-        FloatS16ToS16(d_f, nsx_samples, d);
-
-        if (WebRtcNsx_Process(f_a->noise_sup_x, d, 0, d, 0) == -1) {
-            return -1;
+        if (f_a->echo_enabled) {
+            float d_f[nsx_samples];
+            S16ToFloatS16(d, nsx_samples, d_f);
+            if (WebRtcAec_Process(f_a->echo_cancellation, d_f, 0, d_f, 0, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
+                return -1;
+            }
+            FloatS16ToS16(d_f, nsx_samples, d);
         }
 
-        int32_t inMicLevel = 1, outMicLevel;
-        uint8_t saturationWarning;
+        if (f_a->noise_enabled) {
+            if (WebRtcNsx_Process(f_a->noise_sup_x, d, 0, d, 0) == -1) {
+                return -1;
+            }
+        }
 
-        if (WebRtcAgc_Process(f_a->gain_control, d, 0, nsx_samples, d, 0, inMicLevel, &outMicLevel, 0, &saturationWarning) == -1) {
-            return -1;
+        if (f_a->gain_enabled) {
+            int32_t inMicLevel = 1, outMicLevel;
+            uint8_t saturationWarning;
+
+            if (WebRtcAgc_Process(f_a->gain_control, d, 0, nsx_samples, d, 0, inMicLevel, &outMicLevel, 0, &saturationWarning) == -1) {
+                return -1;
+            }
         }
 
         if (nsx_samples == 160) {
