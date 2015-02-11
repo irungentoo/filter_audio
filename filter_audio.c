@@ -94,7 +94,14 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         return NULL;
     }
 
-    if (WebRtcAec_Init(f_a->echo_cancellation, fs, fs) == -1) {
+    AecConfig echo_config;
+
+    echo_config.nlpMode = kAecNlpConservative;
+    echo_config.skewMode = kAecFalse;
+    echo_config.metricsMode = kAecFalse;
+    echo_config.delay_logging = kAecFalse;
+
+    if (WebRtcAec_Init(f_a->echo_cancellation, fs, f_a->fs) == -1 || WebRtcAec_set_config(f_a->echo_cancellation, echo_config) == -1) {
         kill_filter_audio(f_a);
         return NULL;
     }
