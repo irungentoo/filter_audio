@@ -100,7 +100,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
 
     AecConfig echo_config;
 
-    echo_config.nlpMode = kAecNlpConservative;
+    echo_config.nlpMode = kAecNlpAggressive;
     echo_config.skewMode = kAecFalse;
     echo_config.metricsMode = kAecFalse;
     echo_config.delay_logging = kAecFalse;
