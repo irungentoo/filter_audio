@@ -1,6 +1,6 @@
 prefix=__PREFIX__
 libdir=__LIBDIR__
-includedir=${prefix}/include
+includedir=__INCLUDEDIR__
 
 Name: filteraudio
 Description: Lightweight audio filtering library made from webrtc code
