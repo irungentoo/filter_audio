@@ -10,15 +10,23 @@ PC_FILE = filteraudio.pc
 SRC = $(wildcard */*.c) filter_audio.c
 OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
-LDFLAGS += -lm -lpthread -Wl,-soname=$(SHARED_LIB)
+LDFLAGS += -lm -lpthread 
 
 # Check on which platform we are running
-UNAME_M = $(shell uname -m)
-ifeq ($(UNAME_M), x86_64)
-	LIBDIR = lib64
+ifeq ($(shell uname), Darwin)
+  LDFLAGS += -Wl,-install_name,$(SHARED_LIB)
+  LIBDIR = lib
 else
+  LDFLAGS += -Wl,-soname=$(SHARED_LIB)
+  
+  UNAME_M = $(shell uname -m)
+  ifeq ($(UNAME_M), x86_64)
+	LIBDIR = lib64
+  else
 	LIBDIR = lib
+  endif
 endif
+
 
 all: $(TARGET)
 
