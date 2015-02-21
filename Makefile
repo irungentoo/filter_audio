@@ -2,31 +2,32 @@ BASE_NAME = libfilteraudio
 VERSION = 0.0.0
 PREFIX ?= /usr/local
 
-TARGET = $(BASE_NAME).so.$(VERSION)
-SHARED_LIB = $(BASE_NAME).so.$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
 STATIC_LIB = $(BASE_NAME).a
 PC_FILE = filteraudio.pc
 
 SRC = $(wildcard */*.c) filter_audio.c
 OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
-LDFLAGS += -lm -lpthread 
+LDFLAGS += -v -lm -lpthread
 
 # Check on which platform we are running
+# Use dylib shared lib extension for Mac OS
+# Also skip the -soname flag on Mac, where it's not supported
 ifeq ($(shell uname), Darwin)
-  LDFLAGS += -Wl,-install_name,$(SHARED_LIB)
-  LIBDIR = lib
-else
-  LDFLAGS += -Wl,-soname=$(SHARED_LIB)
-  
-  UNAME_M = $(shell uname -m)
-  ifeq ($(UNAME_M), x86_64)
-	LIBDIR = lib64
-  else
 	LIBDIR = lib
-  endif
+    SHARED_EXT = dylib
+else
+    ifeq ($(shell uname -m), x86_64)
+        LIBDIR = lib64
+    else
+        LIBDIR = lib
+    endif
+    SHARED_EXT = so
+    LDFLAGS += -Wl,-soname=$(SHARED_LIB)
 endif
 
+TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
+SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
 
 all: $(TARGET)
 
