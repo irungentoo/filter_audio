@@ -8,7 +8,7 @@ PC_FILE = filteraudio.pc
 SRC = $(wildcard */*.c) filter_audio.c
 OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
-LDFLAGS += -v -lm -lpthread
+LDFLAGS += -lm -lpthread
 
 # Check on which platform we are running
 # Use dylib shared lib extension for Mac OS
