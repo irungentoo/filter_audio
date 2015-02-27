@@ -11,19 +11,26 @@ SRC = $(wildcard */*.c) filter_audio.c
 OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
 LDFLAGS += -lm -lpthread
+TARGET_ONLY = NO
 
 # Check on which platform we are running
-# Use dylib shared lib extension for Mac OS
-# Also skip the -soname flag on Mac, where it's not supported
-ifeq ($(shell uname), Darwin)
-    SHARED_EXT = dylib
-else
+ifeq ($(shell uname), Linux)
     SHARED_EXT = so
+    TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
+    SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
     LDFLAGS += -Wl,-soname=$(SHARED_LIB)
+else ifeq ($(shell uname), Darwin)
+    SHARED_EXT = dylib
+    TARGET = $(BASE_NAME).$(VERSION).$(SHARED_EXT)
+    SHARED_LIB = $(BASE_NAME).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev).$(SHARED_EXT)
+    LDFLAGS += -Wl,-install_name,$(SHARED_LIB)
+else ifeq ($(shell uname -o), Msys)
+    SHARED_EXT = dll
+    TARGET = $(BASE_NAME).$(SHARED_EXT)
+    TARGET_ONLY = YES
+	LDFLAGS += -Wl,--out-implib,$(LINKING_LIB)
 endif
 
-TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
-SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
 
 all: $(TARGET)
 
@@ -48,15 +55,19 @@ install: all $(HEADER) $(PC_FILE)
 	@install -m644 $(HEADER) $(abspath $(DESTDIR)/$(PREFIX)/$(INCLUDEDIR)/$(HEADER))
 	@echo "Installing $(PC_FILE)"
 	@install -m644 $(PC_FILE) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@cd $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)) ; ln -sf $(TARGET) $(SHARED_LIB) ; ln -sf $(SHARED_LIB) $(BASE_NAME).so
 	@if [ "$(NO_STATIC)" != "1" ]; then \
 		echo "Installing $(STATIC_LIB)" ;\
 		install -m644 $(STATIC_LIB) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/$(STATIC_LIB)) ;\
 	fi
+	@if [ "$(TARGET_ONLY)" != "YES" ]; then \
+    	cd $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)) ;\
+		ln -sf $(TARGET) $(SHARED_LIB) ;\
+		ln -sf $(SHARED_LIB) $(BASE_NAME).$(SHARED_EXT) ;\
+	fi
+	@sed -i'' -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@sed -i'' -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@sed -i'' -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@sed -i'' -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
 
 clean:
 	rm -f $(TARGET) $(STATIC_LIB) $(OBJ)
