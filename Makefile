@@ -59,9 +59,9 @@ install: all $(HEADER) $(PC_FILE)
 	@install -m644 $(HEADER) $(abspath $(DESTDIR)/$(PREFIX)/include/$(HEADER))
 	@echo "Installing $(PC_FILE)"
 	@install -m644 $(PC_FILE) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@sed -i '' -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@sed -i '' -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@sed -i '' -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
 	@cd $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR))
 	@if [ "$(UNAME_O)" != "Msys" ]; then \
 		ln -sf $(TARGET) $(SHARED_LIB) ;\
