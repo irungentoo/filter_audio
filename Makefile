@@ -12,6 +12,7 @@ OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
 LDFLAGS += -lm -lpthread
 TARGET_ONLY = NO
+SED = sed -i''
 
 # Check on which platform we are running
 ifeq ($(shell uname), Linux)
@@ -19,6 +20,12 @@ ifeq ($(shell uname), Linux)
     TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
     SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
     LDFLAGS += -Wl,-soname=$(SHARED_LIB)
+else ifeq ($(shell uname), FreeBSD)
+    SHARED_EXT = so
+    TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
+    SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
+    LDFLAGS += -Wl,-soname=$(SHARED_LIB)
+    SED = sed -i ''
 else ifeq ($(shell uname), Darwin)
     SHARED_EXT = dylib
     TARGET = $(BASE_NAME).$(VERSION).$(SHARED_EXT)
@@ -64,10 +71,10 @@ install: all $(HEADER) $(PC_FILE)
 		ln -sf $(TARGET) $(SHARED_LIB) ;\
 		ln -sf $(SHARED_LIB) $(BASE_NAME).$(SHARED_EXT) ;\
 	fi
-	@sed -i'' -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
 
 clean:
 	rm -f $(TARGET) $(STATIC_LIB) $(OBJ)
