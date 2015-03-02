@@ -28,6 +28,7 @@ else ifeq ($(UNAME_S), FreeBSD)
     SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
     LDFLAGS += -Wl,-soname=$(SHARED_LIB)
     SED = sed -i ''
+    LIBDIR = lib
 else ifeq ($(UNAME_S), Darwin)
     SHARED_EXT = dylib
     TARGET = $(BASE_NAME).$(VERSION).$(SHARED_EXT)
