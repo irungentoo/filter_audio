@@ -16,7 +16,6 @@ SED = sed -i''
 
 # Check on which platform we are running
 UNAME_S = $(shell uname -s)
-UNAME_O = $(shell uname -o)
 ifeq ($(UNAME_S), Linux)
     SHARED_EXT = so
     TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
@@ -34,7 +33,7 @@ else ifeq ($(UNAME_S), Darwin)
     TARGET = $(BASE_NAME).$(VERSION).$(SHARED_EXT)
     SHARED_LIB = $(BASE_NAME).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev).$(SHARED_EXT)
     LDFLAGS += -Wl,-install_name,$(SHARED_LIB)
-else ifeq ($(UNAME_O), Msys)
+else ifneq (, $(shell echo $(UNAME_S) | grep -E 'MSYS|MINGW|CYGWIN'))
     SHARED_EXT = dll
     TARGET = $(BASE_NAME).$(SHARED_EXT)
     TARGET_ONLY = YES
