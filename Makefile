@@ -12,23 +12,33 @@ OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
 LDFLAGS += -lm -lpthread
 TARGET_ONLY = NO
+SED = sed -i''
 
 # Check on which platform we are running
-ifeq ($(shell uname), Linux)
+UNAME_S = $(shell uname -s)
+ifeq ($(UNAME_S), Linux)
     SHARED_EXT = so
     TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
     SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
     LDFLAGS += -Wl,-soname=$(SHARED_LIB)
-else ifeq ($(shell uname), Darwin)
+else ifeq ($(UNAME_S), FreeBSD)
+    SHARED_EXT = so
+    TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
+    SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
+    LDFLAGS += -Wl,-soname=$(SHARED_LIB)
+    SED = sed -i ''
+    LIBDIR = lib
+else ifeq ($(UNAME_S), Darwin)
     SHARED_EXT = dylib
     TARGET = $(BASE_NAME).$(VERSION).$(SHARED_EXT)
     SHARED_LIB = $(BASE_NAME).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev).$(SHARED_EXT)
     LDFLAGS += -Wl,-install_name,$(SHARED_LIB)
-else ifeq ($(shell uname -o), Msys)
+else ifneq (, $(shell echo $(UNAME_S) | grep -E 'MSYS|MINGW|CYGWIN'))
     SHARED_EXT = dll
     TARGET = $(BASE_NAME).$(SHARED_EXT)
     TARGET_ONLY = YES
-	LDFLAGS += -Wl,--out-implib,$(LINKING_LIB).a
+    NO_STATIC = 1
+    LDFLAGS += -Wl,--out-implib,$(TARGET)
 endif
 
 
@@ -60,14 +70,14 @@ install: all $(HEADER) $(PC_FILE)
 		install -m644 $(STATIC_LIB) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/$(STATIC_LIB)) ;\
 	fi
 	@if [ "$(TARGET_ONLY)" != "YES" ]; then \
-    	cd $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)) ;\
+		cd $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)) ;\
 		ln -sf $(TARGET) $(SHARED_LIB) ;\
 		ln -sf $(SHARED_LIB) $(BASE_NAME).$(SHARED_EXT) ;\
 	fi
-	@sed -i'' -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@sed -i'' -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@$(SED) -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
 
 clean:
 	rm -f $(TARGET) $(STATIC_LIB) $(OBJ)
