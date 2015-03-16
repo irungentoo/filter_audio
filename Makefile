@@ -28,7 +28,7 @@ else ifeq ($(shell uname -o), Msys)
     SHARED_EXT = dll
     TARGET = $(BASE_NAME).$(SHARED_EXT)
     TARGET_ONLY = YES
-	LDFLAGS += -Wl,--out-implib,$(LINKING_LIB)
+	LDFLAGS += -Wl,--out-implib,$(LINKING_LIB).a
 endif
 
 
