@@ -7,6 +7,7 @@
 #include "aec/include/echo_cancellation.h"
 #include "other/signal_processing_library.h"
 #include "other/speex_resampler.h"
+#include "zam/filters.h"
 
 typedef struct {
     NsxHandle *noise_sup_x;
@@ -19,7 +20,10 @@ typedef struct {
 
     int16_t msInSndCardBuf;
 
-    FilterState hpf;
+    FilterStateZam hpf350a;
+    FilterStateZam hpf350b;
+    FilterStateZam lpf10000a;
+    FilterStateZam lpf10000b;
 
     SpeexResamplerState *downsampler;
     SpeexResamplerState *upsampler;
@@ -69,7 +73,10 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         fs = 32000;
     }
 
-    init_highpass_filter(&f_a->hpf, fs);
+    init_highpass_filter_zam(&f_a->hpf350a, 350, fs);
+    init_highpass_filter_zam(&f_a->hpf350b, 350, fs);
+    init_lowpass_filter_zam(&f_a->lpf10000a, 10000, fs);
+    init_lowpass_filter_zam(&f_a->lpf10000b, 10000, fs);
 
     if (WebRtcAgc_Create(&f_a->gain_control) == -1) {
         free(f_a);
@@ -255,7 +262,16 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             memcpy(d_l, data + (samples - temp_samples), sizeof(d_l));
         }
 
-        highpass_filter(&f_a->hpf, d_l, nsx_samples);
+        float d_f[nsx_samples];
+        S16ToFloatS16(d_l, nsx_samples, d_f);
+        run_filter_zam(&f_a->hpf350a, d_f, nsx_samples);
+        //run_saturator_zam(d_f, nsx_samples);
+        FloatS16ToS16(d_f, nsx_samples, d_l);
+
+        S16ToFloatS16(d_h, nsx_samples, d_f);
+        run_filter_zam(&f_a->hpf350b, d_f, nsx_samples);
+        //run_saturator_zam(d_f, nsx_samples);
+        FloatS16ToS16(d_f, nsx_samples, d_h);
 
         if (f_a->echo_enabled) {
             float d_f_l[nsx_samples];
@@ -294,6 +310,14 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             }
         }
 
+        S16ToFloatS16(d_l, nsx_samples, d_f);
+        run_filter_zam(&f_a->lpf10000a, d_f, nsx_samples);
+        FloatS16ToS16(d_f, nsx_samples, d_l);
+
+        S16ToFloatS16(d_h, nsx_samples, d_f);
+        run_filter_zam(&f_a->lpf10000b, d_f, nsx_samples);
+        FloatS16ToS16(d_f, nsx_samples, d_h);
+
         if (resample) {
             upsample_audio(f_a, data + resampled_samples, 480, d_l, d_h, nsx_samples);
             resampled_samples += 480;
@@ -306,4 +330,3 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
     return 0;
 }
-
