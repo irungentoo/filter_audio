@@ -123,8 +123,9 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     f_a->noise_enabled = 1;
 
     if (f_a->fs == 48000) {
-        f_a->downsampler = speex_resampler_init(1, 48000, 32000, 9, 0);
-        f_a->upsampler = speex_resampler_init(1, 32000, 48000, 9, 0);
+        int quality = 4;
+        f_a->downsampler = speex_resampler_init(1, 48000, 32000, quality, 0);
+        f_a->upsampler = speex_resampler_init(1, 32000, 48000, quality, 0);
         if (!f_a->upsampler || !f_a->downsampler) {
             kill_filter_audio(f_a);
             return NULL;
