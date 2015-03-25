@@ -268,10 +268,12 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
         //run_saturator_zam(d_f, nsx_samples);
         FloatS16ToS16(d_f, nsx_samples, d_l);
 
-        S16ToFloatS16(d_h, nsx_samples, d_f);
-        run_filter_zam(&f_a->hpf350b, d_f, nsx_samples);
-        //run_saturator_zam(d_f, nsx_samples);
-        FloatS16ToS16(d_f, nsx_samples, d_h);
+        if (resample) {
+            S16ToFloatS16(d_h, nsx_samples, d_f);
+            run_filter_zam(&f_a->hpf350b, d_f, nsx_samples);
+            //run_saturator_zam(d_f, nsx_samples);
+            FloatS16ToS16(d_f, nsx_samples, d_h);
+        }
 
         if (f_a->echo_enabled) {
             float d_f_l[nsx_samples];
@@ -314,11 +316,11 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
         run_filter_zam(&f_a->lpf10000a, d_f, nsx_samples);
         FloatS16ToS16(d_f, nsx_samples, d_l);
 
-        S16ToFloatS16(d_h, nsx_samples, d_f);
-        run_filter_zam(&f_a->lpf10000b, d_f, nsx_samples);
-        FloatS16ToS16(d_f, nsx_samples, d_h);
-
         if (resample) {
+            S16ToFloatS16(d_h, nsx_samples, d_f);
+            run_filter_zam(&f_a->lpf10000b, d_f, nsx_samples);
+            FloatS16ToS16(d_f, nsx_samples, d_h);
+
             upsample_audio(f_a, data + resampled_samples, 480, d_l, d_h, nsx_samples);
             resampled_samples += 480;
         } else {
