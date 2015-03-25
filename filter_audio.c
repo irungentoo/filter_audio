@@ -6,6 +6,7 @@
 #include "ns/include/noise_suppression_x.h"
 #include "aec/include/echo_cancellation.h"
 #include "other/signal_processing_library.h"
+#include "other/speex_resampler.h"
 
 typedef struct {
     NsxHandle *noise_sup_x;
@@ -19,6 +20,14 @@ typedef struct {
     int16_t msInSndCardBuf;
 
     FilterState hpf;
+
+    SpeexResamplerState *downsampler;
+    SpeexResamplerState *upsampler;
+
+    int32_t split_filter_state_1[6];
+    int32_t split_filter_state_2[6];
+    int32_t split_filter_state_3[6];
+    int32_t split_filter_state_4[6];
 
     int echo_enabled;
     int gain_enabled;
@@ -37,6 +46,8 @@ void kill_filter_audio(Filter_Audio *f_a)
     WebRtcNsx_Free(f_a->noise_sup_x);
     WebRtcAgc_Free(f_a->gain_control);
     WebRtcAec_Free(f_a->echo_cancellation);
+    speex_resampler_destroy(f_a->upsampler);
+    speex_resampler_destroy(f_a->downsampler);
     free(f_a);
 }
 
@@ -55,7 +66,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     f_a->fs = fs;
 
     if (fs == 48000) {
-        fs = 16000;
+        fs = 32000;
     }
 
     init_highpass_filter(&f_a->hpf, fs);
@@ -110,6 +121,16 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     f_a->echo_enabled = 1;
     f_a->gain_enabled = 1;
     f_a->noise_enabled = 1;
+
+    if (f_a->fs == 48000) {
+        f_a->downsampler = speex_resampler_init(1, 48000, 32000, 9, 0);
+        f_a->upsampler = speex_resampler_init(1, 32000, 48000, 9, 0);
+        if (!f_a->upsampler || !f_a->downsampler) {
+            kill_filter_audio(f_a);
+            return NULL;
+        }
+    }
+
     return f_a;
 }
 
@@ -130,14 +151,20 @@ static void downsample_audio_echo_in(Filter_Audio *f_a, int16_t *out, const int1
     WebRtcSpl_Resample48khzTo16khz(in, out, &f_a->state_in_echo, f_a->tmp_mem);
 }
 
-static void downsample_audio(Filter_Audio *f_a, int16_t *out, const int16_t *in)
+static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, const int16_t *in, uint32_t in_length)
 {
-    WebRtcSpl_Resample48khzTo16khz(in, out, &f_a->state_in, f_a->tmp_mem);
+    int16_t temp[in_length];
+    uint32_t out_len = in_length;
+    speex_resampler_process_int(f_a->downsampler, 0, in, &in_length, temp, &out_len);
+    WebRtcSpl_AnalysisQMF(temp, out_len, out_l, out_h, f_a->split_filter_state_1, f_a->split_filter_state_2);
 }
 
-static void upsample_audio(Filter_Audio *f_a, int16_t *out, const int16_t *in)
+static void upsample_audio(Filter_Audio *f_a, int16_t *out, uint32_t out_len, const int16_t *in_l, const int16_t *in_h, uint32_t in_length)
 {
-    WebRtcSpl_Resample16khzTo48khz(in, out, &f_a->state_out, f_a->tmp_mem);
+    int16_t temp[out_len];
+    WebRtcSpl_SynthesisQMF(in_l, in_h, in_length, temp, f_a->split_filter_state_3, f_a->split_filter_state_4);
+    in_length *= 2;
+    speex_resampler_process_int(f_a->upsampler, 0, temp, &in_length, out, &out_len);
 }
 
 
@@ -217,26 +244,42 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
     unsigned int temp_samples = samples;
 
     while (temp_samples) {
-        int16_t d[nsx_samples];
+        int16_t d_l[nsx_samples];
+        int16_t *d_h = NULL;
+        int16_t temp[nsx_samples];
         if (resample) {
-            downsample_audio(f_a, d, data + resampled_samples);
+            d_h = temp;
+            downsample_audio(f_a, d_l, d_h, data + resampled_samples, 480);
         } else {
-            memcpy(d, data + (samples - temp_samples), sizeof(d));
+            memcpy(d_l, data + (samples - temp_samples), sizeof(d_l));
         }
 
-        highpass_filter(&f_a->hpf, d, nsx_samples);
+        highpass_filter(&f_a->hpf, d_l, nsx_samples);
 
         if (f_a->echo_enabled) {
-            float d_f[nsx_samples];
-            S16ToFloatS16(d, nsx_samples, d_f);
-            if (WebRtcAec_Process(f_a->echo_cancellation, d_f, 0, d_f, 0, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
+            float d_f_l[nsx_samples];
+            float *d_f_h = NULL;
+            float temp[nsx_samples];
+
+            if (d_h) {
+                d_f_h = temp;
+                S16ToFloatS16(d_h, nsx_samples, d_f_h);
+            }
+
+            S16ToFloatS16(d_l, nsx_samples, d_f_l);
+            if (WebRtcAec_Process(f_a->echo_cancellation, d_f_l, d_f_h, d_f_l, d_f_h, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
                 return -1;
             }
-            FloatS16ToS16(d_f, nsx_samples, d);
+
+            if (d_f_h) {
+                FloatS16ToS16(d_f_h, nsx_samples, d_h);
+            }
+
+            FloatS16ToS16(d_f_l, nsx_samples, d_l);
         }
 
         if (f_a->noise_enabled) {
-            if (WebRtcNsx_Process(f_a->noise_sup_x, d, 0, d, 0) == -1) {
+            if (WebRtcNsx_Process(f_a->noise_sup_x, d_l, d_h, d_l, d_h) == -1) {
                 return -1;
             }
         }
@@ -245,16 +288,16 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             int32_t inMicLevel = 1, outMicLevel;
             uint8_t saturationWarning;
 
-            if (WebRtcAgc_Process(f_a->gain_control, d, 0, nsx_samples, d, 0, inMicLevel, &outMicLevel, 0, &saturationWarning) == -1) {
+            if (WebRtcAgc_Process(f_a->gain_control, d_l, d_h, nsx_samples, d_l, d_h, inMicLevel, &outMicLevel, 0, &saturationWarning) == -1) {
                 return -1;
             }
         }
 
         if (resample) {
-            upsample_audio(f_a, data + resampled_samples, d);
+            upsample_audio(f_a, data + resampled_samples, 480, d_l, d_h, nsx_samples);
             resampled_samples += 480;
         } else {
-            memcpy(data + (samples - temp_samples), d, sizeof(d));
+            memcpy(data + (samples - temp_samples), d_l, sizeof(d_l));
         }
 
         temp_samples -= nsx_samples;
