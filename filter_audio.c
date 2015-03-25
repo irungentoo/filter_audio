@@ -20,9 +20,6 @@ typedef struct {
 
     FilterState hpf;
 
-    int32_t downs_2_state[8];
-    int32_t ups_2_state[8];
-
     int echo_enabled;
     int gain_enabled;
     int noise_enabled;
@@ -251,12 +248,6 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             if (WebRtcAgc_Process(f_a->gain_control, d, 0, nsx_samples, d, 0, inMicLevel, &outMicLevel, 0, &saturationWarning) == -1) {
                 return -1;
             }
-        }
-
-        if (nsx_samples == 160) {
-            int16_t temp[nsx_samples / 2];
-            WebRtcSpl_DownsampleBy2(d, nsx_samples, temp, f_a->downs_2_state);
-            WebRtcSpl_UpsampleBy2(temp, nsx_samples / 2, d, f_a->ups_2_state);
         }
 
         if (resample) {
