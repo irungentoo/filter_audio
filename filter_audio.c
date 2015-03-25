@@ -262,37 +262,26 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             memcpy(d_l, data + (samples - temp_samples), sizeof(d_l));
         }
 
-        float d_f[nsx_samples];
-        S16ToFloatS16(d_l, nsx_samples, d_f);
-        run_filter_zam(&f_a->hpfa, d_f, nsx_samples);
-        run_filter_zam(&f_a->lpfa, d_f, nsx_samples);
-        //run_saturator_zam(d_f, nsx_samples);
-        FloatS16ToS16(d_f, nsx_samples, d_l);
+        float d_f_l[nsx_samples];
+        S16ToFloatS16(d_l, nsx_samples, d_f_l);
+        run_filter_zam(&f_a->hpfa, d_f_l, nsx_samples);
+        run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
 
-        if (resample) {
-            S16ToFloatS16(d_h, nsx_samples, d_f);
-            run_filter_zam(&f_a->hpfb, d_f, nsx_samples);
-            run_filter_zam(&f_a->lpfb, d_f, nsx_samples);
-            //run_saturator_zam(d_f, nsx_samples);
-            FloatS16ToS16(d_f, nsx_samples, d_h);
+        float d_f_h[nsx_samples];
+        memset(d_f_h, 0, nsx_samples*sizeof(float));
+
+	if (resample) {
+            S16ToFloatS16(d_h, nsx_samples, d_f_h);
+            run_filter_zam(&f_a->hpfb, d_f_h, nsx_samples);
+            run_filter_zam(&f_a->lpfb, d_f_h, nsx_samples);
         }
 
         if (f_a->echo_enabled) {
-            float d_f_l[nsx_samples];
-            float *d_f_h = NULL;
-            float temp[nsx_samples];
-
-            if (d_h) {
-                d_f_h = temp;
-                S16ToFloatS16(d_h, nsx_samples, d_f_h);
-            }
-
-            S16ToFloatS16(d_l, nsx_samples, d_f_l);
             if (WebRtcAec_Process(f_a->echo_cancellation, d_f_l, d_f_h, d_f_l, d_f_h, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
                 return -1;
             }
 
-            if (d_f_h) {
+            if (resample) {
                 FloatS16ToS16(d_f_h, nsx_samples, d_h);
             }
 
