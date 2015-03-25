@@ -1,15 +1,15 @@
 #include "filters.h"
 
-void init_highpass_filter_zam(FilterStateZam *hpf, float fc, uint32_t fs)
+void init_highpass_filter_zam(FilterStateZam *hpf, float fc, float fs)
 {
-	float w0;
-	float q;
-	float alpha;
+	double w0;
+	double q;
+	double alpha;
 	int i;
 
 	q = 1.f / sqrt(2.f);
-	w0 = 2 * M_PI * fc / fs;
-	alpha = sin(w0) / (2 * q);
+	w0 = 2.f * M_PI * fc / fs;
+	alpha = sin(w0) / (2.f * q);
 
 	hpf->b[0] = (1.f + cos(w0)) / 2.f;
 	hpf->b[1] = -(1.f + cos(w0));
@@ -24,16 +24,16 @@ void init_highpass_filter_zam(FilterStateZam *hpf, float fc, uint32_t fs)
 	}
 }
 
-void init_lowpass_filter_zam(FilterStateZam *lpf, float fc, uint32_t fs)
+void init_lowpass_filter_zam(FilterStateZam *lpf, float fc, float fs)
 {
-	float w0;
-	float q;
-	float alpha;
+	double w0;
+	double q;
+	double alpha;
 	int i;
 
 	q = 1.f / sqrt(2.f);
-	w0 = 2 * M_PI * fc / fs;
-	alpha = sin(w0) / (2 * q);
+	w0 = 2.f * M_PI * fc / fs;
+	alpha = sin(w0) / (2.f * q);
 
 	lpf->b[0] = (1.f - cos(w0)) / 2.f;
 	lpf->b[1] = 1.f - cos(w0);
@@ -51,8 +51,8 @@ void init_lowpass_filter_zam(FilterStateZam *lpf, float fc, uint32_t fs)
 int run_filter_zam(FilterStateZam* fil, float* data, int length)
 {
 	int i;
-	float a0;
-	float out;
+	double a0;
+	double out;
 
 	if (!fil)
 	    return -1;
@@ -67,13 +67,13 @@ int run_filter_zam(FilterStateZam* fil, float* data, int length)
 				+ fil->b[1]/a0 * fil->x[1]
 				+ fil->b[2]/a0 * fil->x[2]
 				- fil->a[1]/a0 * fil->y[1]
-				- fil->a[2]/a0 * fil->y[2] + 1e-20;
+				- fil->a[2]/a0 * fil->y[2] + 1e-20f;
 		fil->x[2] = fil->x[1];
 		fil->y[2] = fil->y[1];
 		fil->x[1] = data[i];
 		fil->y[1] = out;
 
-		data[i] = out;
+		data[i] = (float) out;
 	}
 	return 0;
 }
@@ -81,7 +81,7 @@ int run_filter_zam(FilterStateZam* fil, float* data, int length)
 int run_saturator_zam(float* data, int length)
 {
 	int i;
-	float x;
+	double x;
 
 	for (i = 0; i < length; i++) {
 		x = data[i];
