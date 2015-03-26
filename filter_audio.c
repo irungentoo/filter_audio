@@ -278,21 +278,23 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             if (WebRtcAec_Process(f_a->echo_cancellation, d_f_l, d_f_h, d_f_l, d_f_h, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
                 return -1;
             }
-
-            if (resample) {
-                FloatS16ToS16(d_f_h, nsx_samples, d_h);
-            }
-
-            FloatS16ToS16(d_f_l, nsx_samples, d_l);
         }
 
         if (f_a->noise_enabled) {
+            if (resample) {
+                FloatS16ToS16(d_f_h, nsx_samples, d_h);
+            }
+            FloatS16ToS16(d_f_l, nsx_samples, d_l);
             if (WebRtcNsx_Process(f_a->noise_sup_x, d_l, d_h, d_l, d_h) == -1) {
                 return -1;
             }
         }
 
         if (f_a->gain_enabled) {
+            if (resample) {
+                FloatS16ToS16(d_f_h, nsx_samples, d_h);
+            }
+            FloatS16ToS16(d_f_l, nsx_samples, d_l);
             int32_t inMicLevel = 1, outMicLevel;
             uint8_t saturationWarning;
 
@@ -301,22 +303,19 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             }
         }
 
-        if (!f_a->echo_enabled) {
-            if (resample) {
-                FloatS16ToS16(d_f_h, nsx_samples, d_h);
-            }
-
-            FloatS16ToS16(d_f_l, nsx_samples, d_l);
-        }
-
         if (resample) {
+            if (!f_a->echo_enabled) {
+                if (resample) {
+                    FloatS16ToS16(d_f_h, nsx_samples, d_h);
+                }
+                FloatS16ToS16(d_f_l, nsx_samples, d_l);
+            }
             upsample_audio(f_a, data + resampled_samples, 480, d_l, d_h, nsx_samples);
             S16ToFloatS16(data + resampled_samples, nsx_samples, d_f_l);
             run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
             FloatS16ToS16(d_f_l, nsx_samples, data + resampled_samples);
             resampled_samples += 480;
         } else {
-            S16ToFloatS16(d_l, nsx_samples, d_f_l);
             run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
             FloatS16ToS16(d_f_l, nsx_samples, d_l);
             memcpy(data + (samples - temp_samples), d_l, sizeof(d_l));
