@@ -73,10 +73,10 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         fs = 32000;
     }
 
-    init_highpass_filter_zam(&f_a->hpfa, 200, (float) fs);
-    init_highpass_filter_zam(&f_a->hpfb, 200, (float) fs);
-    init_lowpass_filter_zam(&f_a->lpfa, 11000, (float) fs);
-    init_lowpass_filter_zam(&f_a->lpfb, 11000, (float) fs);
+    init_highpass_filter_zam(&f_a->hpfa, 150, (float) fs);
+    init_highpass_filter_zam(&f_a->hpfb, 150, (float) fs);
+    init_lowpass_filter_zam(&f_a->lpfa, 12000, (float) fs);
+    init_lowpass_filter_zam(&f_a->lpfb, 12000, (float) fs);
 
     if (WebRtcAgc_Create(&f_a->gain_control) == -1) {
         free(f_a);
@@ -265,6 +265,7 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
         float d_f_l[nsx_samples];
         S16ToFloatS16(d_l, nsx_samples, d_f_l);
         run_filter_zam(&f_a->hpfa, d_f_l, nsx_samples);
+        run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
 
         float d_f_h[nsx_samples];
         memset(d_f_h, 0, nsx_samples*sizeof(float));
@@ -272,29 +273,26 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 	if (resample) {
             S16ToFloatS16(d_h, nsx_samples, d_f_h);
             run_filter_zam(&f_a->hpfb, d_f_h, nsx_samples);
+            run_filter_zam(&f_a->lpfb, d_f_h, nsx_samples);
         }
 
         if (f_a->echo_enabled) {
             if (WebRtcAec_Process(f_a->echo_cancellation, d_f_l, d_f_h, d_f_l, d_f_h, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
                 return -1;
             }
-        }
-
-        if (f_a->noise_enabled) {
             if (resample) {
                 FloatS16ToS16(d_f_h, nsx_samples, d_h);
             }
             FloatS16ToS16(d_f_l, nsx_samples, d_l);
+        }
+
+        if (f_a->noise_enabled) {
             if (WebRtcNsx_Process(f_a->noise_sup_x, d_l, d_h, d_l, d_h) == -1) {
                 return -1;
             }
         }
 
         if (f_a->gain_enabled) {
-            if (resample) {
-                FloatS16ToS16(d_f_h, nsx_samples, d_h);
-            }
-            FloatS16ToS16(d_f_l, nsx_samples, d_l);
             int32_t inMicLevel = 1, outMicLevel;
             uint8_t saturationWarning;
 
@@ -304,20 +302,9 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
         }
 
         if (resample) {
-            if (!f_a->echo_enabled) {
-                if (resample) {
-                    FloatS16ToS16(d_f_h, nsx_samples, d_h);
-                }
-                FloatS16ToS16(d_f_l, nsx_samples, d_l);
-            }
             upsample_audio(f_a, data + resampled_samples, 480, d_l, d_h, nsx_samples);
-            S16ToFloatS16(data + resampled_samples, nsx_samples, d_f_l);
-            run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
-            FloatS16ToS16(d_f_l, nsx_samples, data + resampled_samples);
             resampled_samples += 480;
         } else {
-            run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
-            FloatS16ToS16(d_f_l, nsx_samples, d_l);
             memcpy(data + (samples - temp_samples), d_l, sizeof(d_l));
         }
 
