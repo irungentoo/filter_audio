@@ -73,10 +73,10 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         fs = 32000;
     }
 
-    init_highpass_filter_zam(&f_a->hpfa, 150, (float) fs);
-    init_highpass_filter_zam(&f_a->hpfb, 150, (float) fs);
-    init_lowpass_filter_zam(&f_a->lpfa, 12000, (float) fs);
-    init_lowpass_filter_zam(&f_a->lpfb, 12000, (float) fs);
+    init_highpass_filter_zam(&f_a->hpfa, 100, (float) f_a->fs);
+    init_highpass_filter_zam(&f_a->hpfb, 100, (float) f_a->fs);
+    init_lowpass_filter_zam(&f_a->lpfa, 12000, (float) f_a->fs);
+    init_lowpass_filter_zam(&f_a->lpfb, 12000, (float) f_a->fs);
 
     if (WebRtcAgc_Create(&f_a->gain_control) == -1) {
         free(f_a);
