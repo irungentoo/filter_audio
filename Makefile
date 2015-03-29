@@ -38,7 +38,7 @@ else ifneq (, $(shell echo $(UNAME_S) | grep -E 'MSYS|MINGW|CYGWIN'))
     TARGET = $(BASE_NAME).$(SHARED_EXT)
     TARGET_ONLY = YES
     NO_STATIC = 1
-    LDFLAGS += -Wl,--out-implib,$(TARGET)
+    LDFLAGS += -Wl,--out-implib,$(TARGET).a
 endif
 
 
