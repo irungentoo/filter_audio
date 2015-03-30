@@ -1,12 +1,5 @@
 #include "filters.h"
 
-static inline double sanitize_denormal(double v)
-{
-	if(!isnormal(v))
-		return 0.f;
-	return v;
-}
-
 void init_highpass_filter_zam(FilterStateZam *hpf, float fc, float fs)
 {
 	double w0;
