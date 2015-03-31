@@ -28,19 +28,19 @@ void run_gate(Gate *gate, float *playsignal, float *micsignal, float *outsignal,
 	float gain;
 	gain = gate->gain;
 
-	attack = 1000.f / (0.01 * fs);
-	release = 1000.f / (1.0 * fs);
+	attack = 1000.f / (0.05 * fs);
+	release = 1000.f / (0.4 * fs);
 	
 	for(i = 0; i < frames; i++) {
 		gain = sanitize_denormal(gain);
 		pushsample(gate, playsignal[i]/32768.f);
 		absample = averageabs(gate);
 		if (absample*absample > 0.005) {
-			gain -= release;
+			gain -= attack;
 			if (gain < 0.f)
 				gain = 0.f;
 		} else {
-			gain += attack;
+			gain += release;
 			if (gain > 1.f)
 				gain = 1.f;
 		}
