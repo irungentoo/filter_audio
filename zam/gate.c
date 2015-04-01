@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include "filters.h"
 
+static inline float from_dB(float gdb) {
+	return (exp(gdb/20.f*log(10.f)));
+}
+
 static void pushsample(Gate *gate, float sample) {
 	gate->pos++;
 	if (gate->pos >= MAX_GATE)
@@ -35,7 +39,7 @@ void run_gate(Gate *gate, float *playsignal, float *micsignal, float *outsignal,
 		gain = sanitize_denormal(gain);
 		pushsample(gate, playsignal[i]/32768.f);
 		absample = averageabs(gate);
-		if (absample*absample > 0.005) {
+		if (absample > from_dB(-45.0)) {
 			gain -= attack;
 			if (gain < 0.f)
 				gain = 0.f;
@@ -46,6 +50,5 @@ void run_gate(Gate *gate, float *playsignal, float *micsignal, float *outsignal,
 		}
 		outsignal[i] = gain*micsignal[i];
 		gate->gain = gain;
-		//printf("gain=%f absample^2=%f\n",gain, absample*absample/32768/32768);
 	}
 }
