@@ -39,7 +39,7 @@ void run_gate(Gate *gate, float *playsignal, float *micsignal, float *outsignal,
 		gain = sanitize_denormal(gain);
 		pushsample(gate, playsignal[i]/32768.f);
 		absample = averageabs(gate);
-		if (absample > from_dB(-45.0)) {
+		if (absample > from_dB(-60.0)) {
 			gain -= attack;
 			if (gain < 0.f)
 				gain = 0.f;
