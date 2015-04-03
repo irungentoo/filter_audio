@@ -322,6 +322,7 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             run_filter_zam(&f_a->hpfb, d_f_u, 480);
             run_filter_zam(&f_a->lpfa, d_f_u, 480);
             run_filter_zam(&f_a->lpfb, d_f_u, 480);
+	    run_saturator_zam(d_f_u, 480);
             run_gate(&f_a->gate, f_a->gate.playbuf, d_f_u, d_f_u, 480, f_a->fs);
 	    FloatToFloatS16(d_f_u, 480, d_f_u);
 	    FloatS16ToS16(d_f_u, 480, data + resampled_samples);
@@ -333,6 +334,7 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             run_filter_zam(&f_a->hpfb, d_f_l, nsx_samples);
             run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
             run_filter_zam(&f_a->lpfb, d_f_l, nsx_samples);
+	    run_saturator_zam(d_f_l, nsx_samples);
             run_gate(&f_a->gate, f_a->gate.playbuf, d_f_l, d_f_l, nsx_samples, f_a->fs);
             FloatToFloatS16(d_f_l, nsx_samples, d_f_l);
 	    FloatS16ToS16(d_f_l, nsx_samples, d_l);

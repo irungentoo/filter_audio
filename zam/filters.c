@@ -110,7 +110,7 @@ int run_saturator_zam(float* data, int length)
 
 	for (i = 0; i < length; i++) {
 		x = data[i];
-		data[i] = 2.f * x * (1.f - fabsf(x) * 0.5f);
+		data[i] = x * (1.f - fabsf(x) * 0.5f);
 	}
 	return 0;
 }
