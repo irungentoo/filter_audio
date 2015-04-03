@@ -1,5 +1,28 @@
 #include "filters.h"
 
+inline double sanitize_denormal(double v)
+{
+	if(!isnormal(v))
+		return 0.f;
+	return v;
+}
+
+void FloatToFloatS16(const float* src, size_t size, float* dest) {
+	size_t i;
+	for (i = 0; i < size; ++i)
+		dest[i] = src[i] > 0
+			? src[i] * abs(INT16_MAX)
+			: src[i] * abs(INT16_MIN);
+}
+
+void FloatS16ToFloat(const float* src, size_t size, float* dest) {
+	size_t i;
+	for (i = 0; i < size; ++i)
+		dest[i] = src[i] > 0
+			? src[i] / abs(INT16_MAX)
+			: src[i] / abs(INT16_MIN);
+}
+
 void init_highpass_filter_zam(FilterStateZam *hpf, float fc, float fs)
 {
 	double w0;
