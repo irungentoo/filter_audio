@@ -4,17 +4,17 @@
 #define MAX_GATE 400
 
 typedef struct {
-	double x[3];
-	double y[3];
-	double a[3];
-	double b[3];
+    double x[3];
+    double y[3];
+    double a[3];
+    double b[3];
 } FilterStateZam;
 
 typedef struct {
-	float samples[MAX_GATE];
-	float gain;
-	int pos;
-	float *playbuf;
+    float samples[MAX_GATE];
+    float gain;
+    int pos;
+    float *playbuf;
 } Gate;
 
 void init_highpass_filter_zam(FilterStateZam *hpf, float fc, float fs);
