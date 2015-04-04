@@ -90,7 +90,8 @@ int main()
         if(samples >= samples_perframe) {
             int16_t buf[samples_perframe];
             alcCaptureSamples(device_in, buf, samples_perframe);
-            if (filter && filter_audio(f_a, buf, samples_perframe) == -1) {
+            pass_audio_output(f_a, buf, samples_perframe);
+	    if (filter && filter_audio(f_a, buf, samples_perframe) == -1) {
                 printf("filter_audio fail\n");
                 return 0;
             }
