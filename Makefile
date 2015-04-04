@@ -7,7 +7,7 @@ INCLUDEDIR ?= include
 STATIC_LIB = $(BASE_NAME).a
 PC_FILE = filteraudio.pc
 
-SRC = $(wildcard */*.c) filter_audio.c
+SRC = $(wildcard aec/*.c) $(wildcard agc/*.c) $(wildcard ns/*.c) $(wildcard other/*.c) $(wildcard zam/*.c) filter_audio.c
 OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
 LDFLAGS += -lm -lpthread
@@ -38,7 +38,7 @@ else ifneq (, $(shell echo $(UNAME_S) | grep -E 'MSYS|MINGW|CYGWIN'))
     TARGET = $(BASE_NAME).$(SHARED_EXT)
     TARGET_ONLY = YES
     NO_STATIC = 1
-    LDFLAGS += -Wl,--out-implib,$(TARGET)
+    LDFLAGS += -Wl,--out-implib,$(TARGET).a
 endif
 
 
