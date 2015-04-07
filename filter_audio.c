@@ -26,6 +26,7 @@ typedef struct {
     FilterStateZam lpfb;
 
     SpeexResamplerState *downsampler;
+    SpeexResamplerState *downsampler_echo;
     SpeexResamplerState *upsampler;
 
     int32_t split_filter_state_1[6];
@@ -52,6 +53,7 @@ void kill_filter_audio(Filter_Audio *f_a)
     WebRtcAec_Free(f_a->echo_cancellation);
     speex_resampler_destroy(f_a->upsampler);
     speex_resampler_destroy(f_a->downsampler);
+    speex_resampler_destroy(f_a->downsampler_echo);
     free(f_a);
 }
 
@@ -121,14 +123,20 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     f_a->gain_enabled = 1;
     f_a->noise_enabled = 1;
 
+    int quality = 4;
     if (f_a->fs != 32000) {
-        int quality = 4;
         f_a->downsampler = speex_resampler_init(1, f_a->fs, 32000, quality, 0);
         f_a->upsampler = speex_resampler_init(1, 32000, f_a->fs, quality, 0);
         if (!f_a->upsampler || !f_a->downsampler) {
             kill_filter_audio(f_a);
             return NULL;
         }
+    }
+
+    f_a->downsampler_echo = speex_resampler_init(1, f_a->fs, 16000, quality, 0);
+    if (!f_a->downsampler_echo) {
+        kill_filter_audio(f_a);
+	return NULL;
     }
 
     return f_a;
@@ -148,7 +156,9 @@ int enable_disable_filters(Filter_Audio *f_a, int echo, int noise, int gain)
 
 static void downsample_audio_echo_in(Filter_Audio *f_a, int16_t *out, const int16_t *in)
 {
-    WebRtcSpl_Resample48khzTo16khz(in, out, &f_a->state_in_echo, f_a->tmp_mem);
+    uint32_t lenfs = f_a->fs / 100;
+    uint32_t len16 = 160;
+    speex_resampler_process_int(f_a->downsampler_echo, 0, in, &lenfs, out, &len16);
 }
 
 static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, const int16_t *in, uint32_t in_length)
