@@ -82,7 +82,7 @@ int main()
     alcCaptureStart(device_in);
 
     printf("Starting\n");
-    int16_t last = 0;
+
     while (1) {
         ALint samples;
         alcGetIntegerv(device_in, ALC_CAPTURE_SAMPLES, sizeof(samples), &samples);
@@ -95,9 +95,7 @@ int main()
                 return 0;
             }
 
-            buf[0] = (((unsigned long)buf[1] + (unsigned long)last) / (unsigned long)2);
             sourceplaybuffer(source, buf, samples_perframe, 1, sample_rate);
-            last = buf[samples_perframe - 1];
         }
 
         usleep(1000);
