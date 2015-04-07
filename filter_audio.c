@@ -67,6 +67,9 @@ Filter_Audio *new_filter_audio(uint32_t fs)
 
     f_a->fs = fs;
 
+    if (fs > 32000)
+        fs = 32000;
+
     init_highpass_filter_zam(&f_a->hpfa, 100, (float) f_a->fs);
     init_highpass_filter_zam(&f_a->hpfb, 100, (float) f_a->fs);
     init_lowpass_filter_zam(&f_a->lpfa, 12000, (float) f_a->fs);
@@ -96,13 +99,13 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     gain_config.compressionGaindB = 50;
     gain_config.limiterEnable = kAgcTrue;
  
-    if (WebRtcAgc_Init(f_a->gain_control, 0, 255, kAgcModeAdaptiveDigital, 32000) == -1 || WebRtcAgc_set_config(f_a->gain_control, gain_config) == -1) {
+    if (WebRtcAgc_Init(f_a->gain_control, 0, 255, kAgcModeAdaptiveDigital, fs) == -1 || WebRtcAgc_set_config(f_a->gain_control, gain_config) == -1) {
         kill_filter_audio(f_a);
         return NULL;
     }
 
 
-    if (WebRtcNsx_Init(f_a->noise_sup_x, 32000) == -1 || WebRtcNsx_set_policy(f_a->noise_sup_x, 2) == -1) {
+    if (WebRtcNsx_Init(f_a->noise_sup_x, fs) == -1 || WebRtcNsx_set_policy(f_a->noise_sup_x, 2) == -1) {
         kill_filter_audio(f_a);
         return NULL;
     }
@@ -114,7 +117,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     echo_config.metricsMode = kAecFalse;
     echo_config.delay_logging = kAecFalse;
 
-    if (WebRtcAec_Init(f_a->echo_cancellation, 32000, f_a->fs) == -1 || WebRtcAec_set_config(f_a->echo_cancellation, echo_config) == -1) {
+    if (WebRtcAec_Init(f_a->echo_cancellation, fs, f_a->fs) == -1 || WebRtcAec_set_config(f_a->echo_cancellation, echo_config) == -1) {
         kill_filter_audio(f_a);
         return NULL;
     }
@@ -124,7 +127,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     f_a->noise_enabled = 1;
 
     int quality = 4;
-    if (f_a->fs != 32000) {
+    if (f_a->fs > 32000) {
         f_a->downsampler = speex_resampler_init(1, f_a->fs, 32000, quality, 0);
         f_a->upsampler = speex_resampler_init(1, 32000, f_a->fs, quality, 0);
         if (!f_a->upsampler || !f_a->downsampler) {
