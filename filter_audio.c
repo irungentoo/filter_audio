@@ -193,7 +193,7 @@ int pass_audio_output(Filter_Audio *f_a, const int16_t *data, unsigned int sampl
 
     _Bool resample = 0;
     unsigned int resampled_samples = 0;
-    if (f_a->fs != 32000 && f_a->fs != 16000) {
+    if (f_a->fs > 32000) {
         samples = (samples / nsx_samples) * 160;
         nsx_samples = 160;
         resample = 1;
@@ -247,7 +247,7 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
     _Bool resample = 0;
     unsigned int resampled_samples = 0;
-    if (f_a->fs != 32000) {
+    if (f_a->fs > 32000) {
         samples = (samples / nsx_samples) * 160;
         nsx_samples = 160;
         resample = 1;
