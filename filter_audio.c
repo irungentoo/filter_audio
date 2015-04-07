@@ -133,10 +133,12 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         }
     }
 
-    f_a->downsampler_echo = speex_resampler_init(1, f_a->fs, 16000, quality, 0);
-    if (!f_a->downsampler_echo) {
-        kill_filter_audio(f_a);
-	return NULL;
+    if (f_a->fs != 16000) {
+        f_a->downsampler_echo = speex_resampler_init(1, f_a->fs, 16000, quality, 0);
+        if (!f_a->downsampler_echo) {
+            kill_filter_audio(f_a);
+            return NULL;
+        }
     }
 
     return f_a;
@@ -156,9 +158,9 @@ int enable_disable_filters(Filter_Audio *f_a, int echo, int noise, int gain)
 
 static void downsample_audio_echo_in(Filter_Audio *f_a, int16_t *out, const int16_t *in)
 {
-    uint32_t lenfs = f_a->fs / 100;
-    uint32_t len16 = 160;
-    speex_resampler_process_int(f_a->downsampler_echo, 0, in, &lenfs, out, &len16);
+    uint32_t inlen = f_a->fs / 100;
+    uint32_t outlen = inlen;
+    speex_resampler_process_int(f_a->downsampler_echo, 0, in, &inlen, out, &outlen);
 }
 
 static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, const int16_t *in, uint32_t in_length)
@@ -191,7 +193,7 @@ int pass_audio_output(Filter_Audio *f_a, const int16_t *data, unsigned int sampl
 
     _Bool resample = 0;
     unsigned int resampled_samples = 0;
-    if (f_a->fs != 32000) {
+    if (f_a->fs != 32000 && f_a->fs != 16000) {
         samples = (samples / nsx_samples) * 160;
         nsx_samples = 160;
         resample = 1;
