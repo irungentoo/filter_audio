@@ -1,4 +1,5 @@
 #include "signal_processing_library.h"
+#include <stdlib.h>
 
 static int16_t FloatS16ToS16_C(float v) {
   static const float kMaxRound = (float)INT16_MAX - 0.5f;
