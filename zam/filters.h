@@ -2,10 +2,10 @@
 #include <math.h>
 
 typedef struct {
-	double x[3];
-	double y[3];
-	double a[3];
-	double b[3];
+    double x[3];
+    double y[3];
+    double a[3];
+    double b[3];
 } FilterStateZam;
 
 void init_highpass_filter_zam(FilterStateZam *hpf, float fc, float fs);
