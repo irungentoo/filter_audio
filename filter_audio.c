@@ -136,7 +136,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         }
     }
 
-    if (f_a->fs > 32000) {
+    if (f_a->fs != 16000) {
         f_a->downsampler_echo = speex_resampler_init(1, f_a->fs, 16000, quality, 0);
         if (!f_a->downsampler_echo) {
             kill_filter_audio(f_a);
