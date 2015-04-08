@@ -53,3 +53,20 @@ void S16ToFloat(const int16_t* src, size_t size, float* dest) {
   for (i = 0; i < size; ++i)
     dest[i] = S16ToFloat_C(src[i]);
 }
+
+void FloatToFloatS16(const float* src, size_t size, float* dest) {
+    size_t i;
+    for (i = 0; i < size; ++i)
+        dest[i] = src[i] > 0
+            ? src[i] * abs(INT16_MAX)
+            : src[i] * abs(INT16_MIN);
+}
+
+void FloatS16ToFloat(const float* src, size_t size, float* dest) {
+    size_t i;
+    for (i = 0; i < size; ++i)
+        dest[i] = src[i] > 0
+            ? src[i] / abs(INT16_MAX)
+            : src[i] / abs(INT16_MIN);
+}
+
