@@ -127,7 +127,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     f_a->noise_enabled = 1;
 
     int quality = 4;
-    if (f_a->fs > 32000) {
+    if (f_a->fs > 16000) {
         f_a->downsampler = speex_resampler_init(1, f_a->fs, 32000, quality, 0);
         f_a->upsampler = speex_resampler_init(1, 32000, f_a->fs, quality, 0);
         if (!f_a->upsampler || !f_a->downsampler) {
@@ -170,16 +170,28 @@ static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, 
 {
     int16_t temp[in_length];
     uint32_t out_len = in_length;
-    speex_resampler_process_int(f_a->downsampler, 0, in, &in_length, temp, &out_len);
-    WebRtcSpl_AnalysisQMF(temp, out_len, out_l, out_h, f_a->split_filter_state_1, f_a->split_filter_state_2);
+    if (f_a->fs != 32000) {
+        speex_resampler_process_int(f_a->downsampler, 0, in, &in_length, temp, &out_len);
+        WebRtcSpl_AnalysisQMF(temp, out_len, out_l, out_h,
+                              f_a->split_filter_state_1, f_a->split_filter_state_2);
+    } else {
+        WebRtcSpl_AnalysisQMF(in, out_len, out_l, out_h,
+                              f_a->split_filter_state_1, f_a->split_filter_state_2);
+    }
 }
 
 static void upsample_audio(Filter_Audio *f_a, int16_t *out, uint32_t out_len, const int16_t *in_l, const int16_t *in_h, uint32_t in_length)
 {
     int16_t temp[out_len];
-    WebRtcSpl_SynthesisQMF(in_l, in_h, in_length, temp, f_a->split_filter_state_3, f_a->split_filter_state_4);
-    in_length *= 2;
-    speex_resampler_process_int(f_a->upsampler, 0, temp, &in_length, out, &out_len);
+    if (f_a->fs != 32000) {
+        WebRtcSpl_SynthesisQMF(in_l, in_h, in_length, temp,
+                               f_a->split_filter_state_3, f_a->split_filter_state_4);
+        in_length *= 2;
+        speex_resampler_process_int(f_a->upsampler, 0, temp, &in_length, out, &out_len);
+    } else {
+        WebRtcSpl_SynthesisQMF(in_l, in_h, in_length, out,
+                               f_a->split_filter_state_3, f_a->split_filter_state_4);
+    }
 }
 
 
@@ -250,7 +262,7 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
     _Bool resample = 0;
     unsigned int resampled_samples = 0;
-    if (f_a->fs > 32000) {
+    if (f_a->fs > 16000) {
         samples = (samples / nsx_samples) * 160;
         nsx_samples = 160;
         resample = 1;
