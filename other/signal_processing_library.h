@@ -950,11 +950,8 @@ void FloatS16ToS16(const float* src, size_t size, int16_t* dest);
 void S16ToFloatS16(const int16_t* src, size_t size, float* dest);
 void FloatToS16(const float* src, size_t size, int16_t* dest);
 void S16ToFloat(const int16_t* src, size_t size, float* dest);
-/*
 void FloatToFloatS16(const float* src, size_t size, float* dest);
 void FloatS16ToFloat(const float* src, size_t size, float* dest);
-*/
-
 
 typedef struct {
   int16_t y[4];
