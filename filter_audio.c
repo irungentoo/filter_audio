@@ -37,6 +37,7 @@ typedef struct {
     int echo_enabled;
     int gain_enabled;
     int noise_enabled;
+    int lowpass_enabled;
 } Filter_Audio;
 
 #define _FILTER_AUDIO
@@ -59,7 +60,7 @@ void kill_filter_audio(Filter_Audio *f_a)
 
 Filter_Audio *new_filter_audio(uint32_t fs)
 {
-    if (fs == 16000 || fs == 24000) {
+    if (fs == 0) {
         return NULL;
     }
 
@@ -71,13 +72,18 @@ Filter_Audio *new_filter_audio(uint32_t fs)
 
     f_a->fs = fs;
 
-    if (fs > 32000)
+    if (fs != 16000)
         fs = 32000;
 
     init_highpass_filter_zam(&f_a->hpfa, 100, (float) f_a->fs);
     init_highpass_filter_zam(&f_a->hpfb, 100, (float) f_a->fs);
-    init_lowpass_filter_zam(&f_a->lpfa, 12000, (float) f_a->fs);
-    init_lowpass_filter_zam(&f_a->lpfb, 12000, (float) f_a->fs);
+
+    unsigned int lowpass_filter_frequency = 12000;
+    if (f_a->fs > (lowpass_filter_frequency * 2)) {
+        init_lowpass_filter_zam(&f_a->lpfa, lowpass_filter_frequency, (float) f_a->fs);
+        init_lowpass_filter_zam(&f_a->lpfb, lowpass_filter_frequency, (float) f_a->fs);
+        f_a->lowpass_enabled = 1;
+    }
 
     if (WebRtcAgc_Create(&f_a->gain_control) == -1) {
         free(f_a);
@@ -131,18 +137,15 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     f_a->noise_enabled = 1;
 
     int quality = 4;
-    if (f_a->fs > 16000) {
+    if (f_a->fs != 16000) {
         f_a->downsampler = speex_resampler_init(1, f_a->fs, 32000, quality, 0);
         f_a->upsampler = speex_resampler_init(1, 32000, f_a->fs, quality, 0);
-        if (!f_a->upsampler || !f_a->downsampler) {
-            kill_filter_audio(f_a);
-            return NULL;
-        }
-    }
 
-    if (f_a->fs != 16000) {
+         /* quality doesn't need to be high for this one. */
+        quality = 0;
         f_a->downsampler_echo = speex_resampler_init(1, f_a->fs, 16000, quality, 0);
-        if (!f_a->downsampler_echo) {
+
+        if (!f_a->upsampler || !f_a->downsampler || !f_a->downsampler_echo) {
             kill_filter_audio(f_a);
             return NULL;
         }
@@ -172,8 +175,8 @@ static void downsample_audio_echo_in(Filter_Audio *f_a, int16_t *out, const int1
 
 static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, const int16_t *in, uint32_t in_length)
 {
-    int16_t temp[in_length];
-    uint32_t out_len = in_length;
+    int16_t temp[320];
+    uint32_t out_len = 320;
     if (f_a->fs != 32000) {
         speex_resampler_process_int(f_a->downsampler, 0, in, &in_length, temp, &out_len);
         WebRtcSpl_AnalysisQMF(temp, out_len, out_l, out_h,
@@ -186,7 +189,7 @@ static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, 
 
 static void upsample_audio(Filter_Audio *f_a, int16_t *out, uint32_t out_len, const int16_t *in_l, const int16_t *in_h, uint32_t in_length)
 {
-    int16_t temp[out_len];
+    int16_t temp[320];
     if (f_a->fs != 32000) {
         WebRtcSpl_SynthesisQMF(in_l, in_h, in_length, temp,
                                f_a->split_filter_state_3, f_a->split_filter_state_4);
@@ -266,7 +269,7 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
     _Bool resample = 0;
     unsigned int resampled_samples = 0;
-    if (f_a->fs > 16000) {
+    if (f_a->fs != 16000) {
         samples = (samples / nsx_samples) * 160;
         nsx_samples = 160;
         resample = 1;
@@ -328,8 +331,12 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             S16ToFloat(data + resampled_samples, smp, d_f_u);
             run_filter_zam(&f_a->hpfa, d_f_u, smp);
             run_filter_zam(&f_a->hpfb, d_f_u, smp);
-            run_filter_zam(&f_a->lpfa, d_f_u, smp);
-            run_filter_zam(&f_a->lpfb, d_f_u, smp);
+
+            if (f_a->lowpass_enabled) {
+                run_filter_zam(&f_a->lpfa, d_f_u, smp);
+                run_filter_zam(&f_a->lpfb, d_f_u, smp);
+            }
+
             run_saturator_zam(d_f_u, smp);
             FloatToS16(d_f_u, smp, data + resampled_samples);
             resampled_samples += smp;
@@ -337,8 +344,12 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             S16ToFloat(d_l, nsx_samples, d_f_l);
             run_filter_zam(&f_a->hpfa, d_f_l, nsx_samples);
             run_filter_zam(&f_a->hpfb, d_f_l, nsx_samples);
-            run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
-            run_filter_zam(&f_a->lpfb, d_f_l, nsx_samples);
+
+            if (f_a->lowpass_enabled) {
+                run_filter_zam(&f_a->lpfa, d_f_l, nsx_samples);
+                run_filter_zam(&f_a->lpfb, d_f_l, nsx_samples);
+            }
+
             run_saturator_zam(d_f_l, nsx_samples);
             FloatToS16(d_f_l, nsx_samples, d_l);
             memcpy(data + (samples - temp_samples), d_l, sizeof(d_l));
