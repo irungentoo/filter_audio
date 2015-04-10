@@ -12,9 +12,8 @@ OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
 LDFLAGS += -lm -lpthread
 TARGET_ONLY = NO
-SED = sed -i''
 
-# Check on which platform we are running
+# Check on which system we are running
 UNAME_S = $(shell uname -s)
 ifeq ($(UNAME_S), Linux)
     SHARED_EXT = so
@@ -26,7 +25,6 @@ else ifeq ($(UNAME_S), FreeBSD)
     TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
     SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
     LDFLAGS += -Wl,-soname=$(SHARED_LIB)
-    SED = sed -i ''
     LIBDIR = lib
 else ifeq ($(UNAME_S), Darwin)
     SHARED_EXT = dylib
@@ -56,28 +54,29 @@ $(TARGET): $(OBJ)
 	@echo "  CC    $@"
 	@$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
-install: all $(HEADER) $(PC_FILE)
+install: $(TARGET) $(HEADER) $(PC_FILE)
 	mkdir -p $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig)
 	mkdir -p $(abspath $(DESTDIR)/$(PREFIX)/$(INCLUDEDIR))
 	@echo "Installing $(TARGET)"
-	@install -m755 $(TARGET) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/$(TARGET))
+	@install -m 0755 $(TARGET) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/$(TARGET))
 	@echo "Installing $(HEADER)"
-	@install -m644 $(HEADER) $(abspath $(DESTDIR)/$(PREFIX)/$(INCLUDEDIR)/$(HEADER))
+	@install -m 0644 $(HEADER) $(abspath $(DESTDIR)/$(PREFIX)/$(INCLUDEDIR)/$(HEADER))
 	@echo "Installing $(PC_FILE)"
-	@install -m644 $(PC_FILE) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@if [ "$(NO_STATIC)" != "1" ]; then \
+	@install -m 0644 $(PC_FILE) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@if [ "$(NO_STATIC)" != "1" -a -e "$(STATIC_LIB)" ]; then \
 		echo "Installing $(STATIC_LIB)" ;\
-		install -m644 $(STATIC_LIB) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/$(STATIC_LIB)) ;\
+		install -m 0644 $(STATIC_LIB) $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/$(STATIC_LIB)) ;\
 	fi
 	@if [ "$(TARGET_ONLY)" != "YES" ]; then \
 		cd $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)) ;\
 		ln -sf $(TARGET) $(SHARED_LIB) ;\
 		ln -sf $(SHARED_LIB) $(BASE_NAME).$(SHARED_EXT) ;\
 	fi
-	@$(SED) -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@$(SED) -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@$(SED) -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
-	@$(SED) -e 's:__VERSION__:'$(VERSION)':g' $(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE))
+	@pc_file=$(abspath $(DESTDIR)/$(PREFIX)/$(LIBDIR)/pkgconfig/$(PC_FILE)) ;\
+	sed -e 's:__PREFIX__:'$(abspath $(PREFIX))':g' $$pc_file > temp_file && mv temp_file $$pc_file ;\
+	sed -e 's:__LIBDIR__:'$(abspath $(PREFIX)/$(LIBDIR))':g' $$pc_file > temp_file && mv temp_file $$pc_file ;\
+	sed -e 's:__INCLUDEDIR__:'$(abspath $(PREFIX)/$(INCLUDEDIR))':g' $$pc_file > temp_file && mv temp_file $$pc_file ;\
+	sed -e 's:__VERSION__:'$(VERSION)':g' $$pc_file > temp_file && mv temp_file $$pc_file
 
 clean:
 	rm -f $(TARGET) $(STATIC_LIB) $(OBJ)
