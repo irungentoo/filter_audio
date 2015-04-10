@@ -1,6 +1,6 @@
 #include "filters.h"
 
-static inline double sanitize_denormal(double v)
+double sanitize_denormal(double v)
 {
 	if(!isnormal(v))
 		return 0.f;
