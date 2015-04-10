@@ -59,6 +59,10 @@ void kill_filter_audio(Filter_Audio *f_a)
 
 Filter_Audio *new_filter_audio(uint32_t fs)
 {
+    if (fs == 16000 || fs == 24000) {
+        return NULL;
+    }
+
     Filter_Audio *f_a = calloc(sizeof(Filter_Audio), 1);
 
     if (!f_a) {
