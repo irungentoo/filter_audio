@@ -1,16 +1,20 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-
+#include <stdio.h>
 #include "agc/include/gain_control.h"
 #include "ns/include/noise_suppression_x.h"
 #include "aec/include/echo_cancellation.h"
+#include "vad/include/webrtc_vad.h"
 #include "other/signal_processing_library.h"
 #include "other/speex_resampler.h"
 #include "zam/filters.h"
 
+
+
 typedef struct {
     NsxHandle *noise_sup_x;
+    VadInst   *Vad_handle;
     void *gain_control, *echo_cancellation;
     uint32_t fs;
 
@@ -37,11 +41,16 @@ typedef struct {
     int echo_enabled;
     int gain_enabled;
     int noise_enabled;
+    int vad_enabled;
     int lowpass_enabled;
+
+    _Bool flagVAD;
 } Filter_Audio;
 
 #define _FILTER_AUDIO
 #include "filter_audio.h"
+
+int16_t count = 0;
 
 void kill_filter_audio(Filter_Audio *f_a)
 {
@@ -52,6 +61,7 @@ void kill_filter_audio(Filter_Audio *f_a)
     WebRtcNsx_Free(f_a->noise_sup_x);
     WebRtcAgc_Free(f_a->gain_control);
     WebRtcAec_Free(f_a->echo_cancellation);
+    WebRtcVad_Free(f_a->Vad_handle);
     speex_resampler_destroy(f_a->upsampler);
     speex_resampler_destroy(f_a->downsampler);
     speex_resampler_destroy(f_a->downsampler_echo);
@@ -103,12 +113,20 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         return NULL;
     }
 
+    if (WebRtcVad_Create(&f_a->Vad_handle) == -1){
+        WebRtcAec_Free(f_a->echo_cancellation);
+        WebRtcAgc_Free(f_a->gain_control);
+        WebRtcNsx_Free(f_a->noise_sup_x);
+        free(f_a);
+        return NULL;
+    }
+
     WebRtcAgc_config_t gain_config;
 
     gain_config.targetLevelDbfs = 1;
     gain_config.compressionGaindB = 50;
     gain_config.limiterEnable = kAgcTrue;
- 
+
     if (WebRtcAgc_Init(f_a->gain_control, 0, 255, kAgcModeAdaptiveDigital, fs) == -1 || WebRtcAgc_set_config(f_a->gain_control, gain_config) == -1) {
         kill_filter_audio(f_a);
         return NULL;
@@ -122,7 +140,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
 
     AecConfig echo_config;
 
-    echo_config.nlpMode = kAecNlpAggressive;
+    echo_config.nlpMode = kAecNlpModerate;
     echo_config.skewMode = kAecFalse;
     echo_config.metricsMode = kAecFalse;
     echo_config.delay_logging = kAecFalse;
@@ -132,9 +150,16 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         return NULL;
     }
 
+    int vad_mode = 1;  //Aggressiveness mode (0, 1, 2, or 3).
+    if (WebRtcVad_Init(f_a->Vad_handle) == -1 || WebRtcVad_set_mode(f_a->Vad_handle,vad_mode) == -1){
+        kill_filter_audio(f_a);
+        return NULL;
+    }
+
     f_a->echo_enabled = 1;
     f_a->gain_enabled = 1;
     f_a->noise_enabled = 1;
+    f_a->vad_enabled = 1;
 
     int quality = 4;
     if (f_a->fs != 16000) {
@@ -150,6 +175,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
             return NULL;
         }
     }
+
 
     return f_a;
 }
@@ -253,11 +279,14 @@ int set_echo_delay_ms(Filter_Audio *f_a, int16_t msInSndCardBuf)
     }
 
     f_a->msInSndCardBuf = msInSndCardBuf;
+
+    printf("delay_ms: %d \n",f_a->msInSndCardBuf);
     return 0;
 }
 
 int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 {
+
     if (!f_a) {
         return -1;
     }
@@ -304,6 +333,7 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             if (WebRtcAec_Process(f_a->echo_cancellation, d_f_l, d_f_h, d_f_l, d_f_h, nsx_samples, f_a->msInSndCardBuf, 0) == -1) {
                 return -1;
             }
+
             if (resample) {
                 FloatS16ToS16(d_f_h, nsx_samples, d_h);
             }
@@ -315,6 +345,8 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
                 return -1;
             }
         }
+
+
 
         if (f_a->gain_enabled) {
             int32_t inMicLevel = 1, outMicLevel;
@@ -342,6 +374,10 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             resampled_samples += smp;
         } else {
             S16ToFloat(d_l, nsx_samples, d_f_l);
+
+
+
+
             run_filter_zam(&f_a->hpfa, d_f_l, nsx_samples);
             run_filter_zam(&f_a->hpfb, d_f_l, nsx_samples);
 
@@ -351,11 +387,33 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             }
 
             run_saturator_zam(d_f_l, nsx_samples);
+
+            //WebRtcAec_BufferFarend(f_a->echo_cancellation,d_f_l,nsx_samples);
             FloatToS16(d_f_l, nsx_samples, d_l);
             memcpy(data + (samples - temp_samples), d_l, sizeof(d_l));
         }
 
+        //
         temp_samples -= nsx_samples;
+
+
+    }
+
+    if(f_a->vad_enabled){
+        int i = 0;
+        f_a->flagVAD = 0;
+        int16_t status = WebRtcVad_Process(f_a->Vad_handle, f_a->fs, data, samples);
+        if(status == -1){
+            return -1;
+        }
+
+        f_a->flagVAD = status;
+
+        if(f_a->flagVAD == 0){
+            for(i = 0; i < samples; i++){
+                data[i] = 0;
+            }
+        }
     }
 
     return 0;
