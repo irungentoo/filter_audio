@@ -50,7 +50,7 @@ typedef struct {
 #define _FILTER_AUDIO
 #include "filter_audio.h"
 
-int16_t count = 0;
+
 
 void kill_filter_audio(Filter_Audio *f_a)
 {
@@ -140,7 +140,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
 
     AecConfig echo_config;
 
-    echo_config.nlpMode = kAecNlpModerate;
+    echo_config.nlpMode = kAecNlpAggressive;
     echo_config.skewMode = kAecFalse;
     echo_config.metricsMode = kAecFalse;
     echo_config.delay_logging = kAecFalse;
@@ -280,7 +280,7 @@ int set_echo_delay_ms(Filter_Audio *f_a, int16_t msInSndCardBuf)
 
     f_a->msInSndCardBuf = msInSndCardBuf;
 
-    printf("delay_ms: %d \n",f_a->msInSndCardBuf);
+
     return 0;
 }
 
@@ -388,12 +388,10 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
             run_saturator_zam(d_f_l, nsx_samples);
 
-            //WebRtcAec_BufferFarend(f_a->echo_cancellation,d_f_l,nsx_samples);
             FloatToS16(d_f_l, nsx_samples, d_l);
             memcpy(data + (samples - temp_samples), d_l, sizeof(d_l));
         }
 
-        //
         temp_samples -= nsx_samples;
 
 
