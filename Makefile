@@ -7,7 +7,7 @@ INCLUDEDIR ?= include
 STATIC_LIB = $(BASE_NAME).a
 PC_FILE = filteraudio.pc
 
-SRC = $(wildcard aec/*.c) $(wildcard agc/*.c) $(wildcard ns/*.c) $(wildcard other/*.c) $(wildcard zam/*.c) filter_audio.c
+SRC = $(wildcard aec/*.c) $(wildcard agc/*.c) $(wildcard ns/*.c) $(wildcard other/*.c) $(wildcard zam/*.c) $(wildcard vad/*.c) filter_audio.c
 OBJ = $(SRC:.c=.o)
 HEADER = filter_audio.h
 LDFLAGS += -lm -lpthread

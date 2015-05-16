@@ -43,8 +43,6 @@ typedef struct {
     int noise_enabled;
     int vad_enabled;
     int lowpass_enabled;
-
-    _Bool flagVAD;
 } Filter_Audio;
 
 #define _FILTER_AUDIO
@@ -124,7 +122,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     WebRtcAgc_config_t gain_config;
 
     gain_config.targetLevelDbfs = 1;
-    gain_config.compressionGaindB = 50;
+    gain_config.compressionGaindB = 20;
     gain_config.limiterEnable = kAgcTrue;
 
     if (WebRtcAgc_Init(f_a->gain_control, 0, 255, kAgcModeAdaptiveDigital, fs) == -1 || WebRtcAgc_set_config(f_a->gain_control, gain_config) == -1) {
@@ -180,7 +178,7 @@ Filter_Audio *new_filter_audio(uint32_t fs)
     return f_a;
 }
 
-int enable_disable_filters(Filter_Audio *f_a, int echo, int noise, int gain)
+int enable_disable_filters(Filter_Audio *f_a, int echo, int noise, int gain, int vad)
 {
     if (!f_a) {
         return -1;
@@ -189,6 +187,7 @@ int enable_disable_filters(Filter_Audio *f_a, int echo, int noise, int gain)
     f_a->echo_enabled = echo;
     f_a->gain_enabled = gain;
     f_a->noise_enabled = noise;
+    f_a->vad_enabled = vad;
     return 0;
 }
 
@@ -198,6 +197,7 @@ static void downsample_audio_echo_in(Filter_Audio *f_a, int16_t *out, const int1
     uint32_t outlen = inlen;
     speex_resampler_process_int(f_a->downsampler_echo, 0, in, &inlen, out, &outlen);
 }
+
 
 static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, const int16_t *in, uint32_t in_length)
 {
@@ -230,7 +230,7 @@ static void upsample_audio(Filter_Audio *f_a, int16_t *out, uint32_t out_len, co
 
 int pass_audio_output(Filter_Audio *f_a, const int16_t *data, unsigned int samples)
 {
-    if (!f_a || !f_a->echo_enabled) {
+    if (!f_a || (!f_a->echo_enabled && !f_a->gain_enabled)) {
         return -1;
     }
 
@@ -255,6 +255,10 @@ int pass_audio_output(Filter_Audio *f_a, const int16_t *data, unsigned int sampl
         if (resample) {
             int16_t d[nsx_samples];
             downsample_audio_echo_in(f_a, d, data + resampled_samples);
+
+            if (WebRtcAgc_AddFarend(f_a->gain_control, d, nsx_samples) == -1)
+                return -1;
+
             S16ToFloatS16(d, nsx_samples, d_f);
             resampled_samples += f_a->fs / 100;
         } else {
@@ -306,17 +310,33 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
     unsigned int temp_samples = samples;
     unsigned int smp = f_a->fs / 100;
+    int novoice = 1;
 
     while (temp_samples) {
         int16_t d_l[nsx_samples];
         int16_t *d_h = NULL;
         int16_t temp[nsx_samples];
         memset(temp, 0, nsx_samples*sizeof(float));
-        d_h = temp;
         if (resample) {
+            d_h = temp;
             downsample_audio(f_a, d_l, d_h, data + resampled_samples, smp);
         } else {
             memcpy(d_l, data + (samples - temp_samples), sizeof(d_l));
+        }
+
+        if(f_a->vad_enabled){
+            if(WebRtcVad_Process(f_a->Vad_handle, 16000, d_l, nsx_samples) == 1){
+                novoice = 0;
+            }
+        } else {
+            novoice = 0;
+        }
+
+        if (f_a->gain_enabled) {
+            int32_t inMicLevel = 128, outMicLevel;
+
+            if (WebRtcAgc_VirtualMic(f_a->gain_control, d_l, d_h, nsx_samples, inMicLevel, &outMicLevel) == -1)
+                return -1;
         }
 
         float d_f_l[nsx_samples];
@@ -346,10 +366,8 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
             }
         }
 
-
-
         if (f_a->gain_enabled) {
-            int32_t inMicLevel = 1, outMicLevel;
+            int32_t inMicLevel = 128, outMicLevel;
             uint8_t saturationWarning;
 
             if (WebRtcAgc_Process(f_a->gain_control, d_l, d_h, nsx_samples, d_l, d_h, inMicLevel, &outMicLevel, 0, &saturationWarning) == -1) {
@@ -375,9 +393,6 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
         } else {
             S16ToFloat(d_l, nsx_samples, d_f_l);
 
-
-
-
             run_filter_zam(&f_a->hpfa, d_f_l, nsx_samples);
             run_filter_zam(&f_a->hpfb, d_f_l, nsx_samples);
 
@@ -397,22 +412,5 @@ int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 
     }
 
-    if(f_a->vad_enabled){
-        int i = 0;
-        f_a->flagVAD = 0;
-        int16_t status = WebRtcVad_Process(f_a->Vad_handle, f_a->fs, data, samples);
-        if(status == -1){
-            return -1;
-        }
-
-        f_a->flagVAD = status;
-
-        if(f_a->flagVAD == 0){
-            for(i = 0; i < samples; i++){
-                data[i] = 0;
-            }
-        }
-    }
-
-    return 0;
+    return !novoice;
 }
