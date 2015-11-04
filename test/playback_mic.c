@@ -10,7 +10,7 @@
 #include "../filter_audio.h"
 
 
-static void sourceplaybuffer(ALuint source, int16_t *data, int samples, _Bool channels, unsigned int sample_rate)
+static void sourceplaybuffer(ALuint source, int16_t *data, int samples, unsigned int channels, unsigned int sample_rate)
 {
     if(!channels || channels > 2) {
         return;
