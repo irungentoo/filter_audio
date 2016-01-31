@@ -5,6 +5,7 @@
 #include "agc/include/gain_control.h"
 #include "ns/include/noise_suppression_x.h"
 #include "aec/include/echo_cancellation.h"
+#include "aec/aec_core.h"
 #include "vad/include/webrtc_vad.h"
 #include "other/signal_processing_library.h"
 #include "other/speex_resampler.h"
@@ -119,6 +120,9 @@ Filter_Audio *new_filter_audio(uint32_t fs)
         return NULL;
     }
 
+    WebRtcAec_enable_delay_correction(WebRtcAec_aec_core(f_a->echo_cancellation), kAecTrue);
+    WebRtcAec_enable_reported_delay(WebRtcAec_aec_core(f_a->echo_cancellation), kAecTrue);
+    
     WebRtcAgc_config_t gain_config;
 
     gain_config.targetLevelDbfs = 1;
@@ -284,13 +288,11 @@ int set_echo_delay_ms(Filter_Audio *f_a, int16_t msInSndCardBuf)
 
     f_a->msInSndCardBuf = msInSndCardBuf;
 
-
     return 0;
 }
 
 int filter_audio(Filter_Audio *f_a, int16_t *data, unsigned int samples)
 {
-
     if (!f_a) {
         return -1;
     }
