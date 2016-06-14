@@ -15,18 +15,7 @@ TARGET_ONLY = NO
 
 # Check on which system we are running
 UNAME_S = $(shell uname -s)
-ifeq ($(UNAME_S), Linux)
-    SHARED_EXT = so
-    TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
-    SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
-    LDFLAGS += -Wl,-soname=$(SHARED_LIB)
-else ifeq ($(UNAME_S), FreeBSD)
-    SHARED_EXT = so
-    TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
-    SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
-    LDFLAGS += -Wl,-soname=$(SHARED_LIB)
-    LIBDIR = lib
-else ifeq ($(UNAME_S), Darwin)
+ifeq ($(UNAME_S), Darwin)
     SHARED_EXT = dylib
     TARGET = $(BASE_NAME).$(VERSION).$(SHARED_EXT)
     SHARED_LIB = $(BASE_NAME).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev).$(SHARED_EXT)
@@ -37,6 +26,11 @@ else ifneq (, $(shell echo $(UNAME_S) | grep -E 'MSYS|MINGW|CYGWIN'))
     TARGET_ONLY = YES
     NO_STATIC = 1
     LDFLAGS += -Wl,--out-implib,$(TARGET).a
+else
+    SHARED_EXT = so
+    TARGET = $(BASE_NAME).$(SHARED_EXT).$(VERSION)
+    SHARED_LIB = $(BASE_NAME).$(SHARED_EXT).$(shell echo $(VERSION) | rev | cut -d "." -f 1 | rev)
+    LDFLAGS += -Wl,-soname=$(SHARED_LIB)
 endif
 
 
