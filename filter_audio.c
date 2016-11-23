@@ -205,8 +205,8 @@ static void downsample_audio_echo_in(Filter_Audio *f_a, int16_t *out, const int1
 
 static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, const int16_t *in, uint32_t in_length)
 {
-    int16_t temp[320];
-    uint32_t out_len = 320;
+    int16_t temp[in_length];
+    uint32_t out_len = in_length;
     if (f_a->fs != 32000) {
         speex_resampler_process_int(f_a->downsampler, 0, in, &in_length, temp, &out_len);
         WebRtcSpl_AnalysisQMF(temp, out_len, out_l, out_h,
@@ -219,7 +219,7 @@ static void downsample_audio(Filter_Audio *f_a, int16_t *out_l, int16_t *out_h, 
 
 static void upsample_audio(Filter_Audio *f_a, int16_t *out, uint32_t out_len, const int16_t *in_l, const int16_t *in_h, uint32_t in_length)
 {
-    int16_t temp[320];
+    int16_t temp[out_len];
     if (f_a->fs != 32000) {
         WebRtcSpl_SynthesisQMF(in_l, in_h, in_length, temp,
                                f_a->split_filter_state_3, f_a->split_filter_state_4);
