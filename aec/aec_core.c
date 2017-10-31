@@ -675,7 +675,6 @@ static void UpdateMetrics(AecCore* aec) {
       dtmp = 10 * (float)log10(aec->farlevel.averagelevel /
                                    aec->nearlevel.averagelevel +
                                1e-10f);
-      dtmp2 = 10 * (float)log10(aec->farlevel.averagelevel / echo + 1e-10f);
 
       aec->erl.instant = dtmp;
       if (dtmp > aec->erl.max) {
@@ -734,12 +733,8 @@ static void UpdateMetrics(AecCore* aec) {
       suppressedEcho = 2 * (aec->nlpoutlevel.averagelevel -
                             safety * aec->nlpoutlevel.minlevel);
 
-      dtmp = 10 * (float)log10(aec->nearlevel.averagelevel /
-                                   (2 * aec->nlpoutlevel.averagelevel) +
-                               1e-10f);
-      dtmp2 = 10 * (float)log10(echo / suppressedEcho + 1e-10f);
+      dtmp = 10 * (float)log10(echo / suppressedEcho + 1e-10f);
 
-      dtmp = dtmp2;
       aec->erle.instant = dtmp;
       if (dtmp > aec->erle.max) {
         aec->erle.max = dtmp;
