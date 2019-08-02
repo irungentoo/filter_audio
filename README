@@ -1,4 +1,6 @@
-Lightweight audio filtering library made from webrtc code.
+Lightweight audio filtering library made from webrtc code, with `module.map` for clang interop.
+
+See https://forums.swift.org/t/where-to-place-custom-module-modulemap-for-third-party-c-library-without-touching-their-source-code/17920/2 for further discussion regarding the need for a `module.map`.
 
 Build and install using make (`sudo make install`).
 
